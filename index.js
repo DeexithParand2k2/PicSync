@@ -10,6 +10,7 @@ const axios = require('axios');
 const createBuffer = require('./modules/createBuffer')
 const getUserId = require('./modules/getUserId')
 const uploadToDrive = require('./modules/uploadToDrive')
+const authorizeImageHandler = require('./modules/authorizeImageHandler')
 
 // Load environment variables
 const BOT_TOKEN = process.env.BOT_KEY;
@@ -22,7 +23,7 @@ const REDIRECT_URI = 'https://developers.google.com/oauthplayground'
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 console.log("Server Started ... ")
 
-// creating a local buffer
+// Creating a local buffer Folder
 createBuffer()
 
 // Initialize Google OAuth2 client
@@ -42,7 +43,6 @@ const googleDriveAPI = google.drive({
 
 // handle if image is sent
 async function imageHandler(msg, userUid) {
-    const replyMessage = "Telegram User : " + userUid + "\nYou sent an image."
 
     const photo = msg.photo[msg.photo.length - 1];
 
@@ -67,8 +67,8 @@ async function imageHandler(msg, userUid) {
     writer.on('finish', async () => {
         try {
             // Upload the file to Google Drive
-            const uploadedFile = await uploadToDrive(googleDriveAPI, filePath, path.basename(filePath));
-            bot.sendMessage(msg.chat.id, `${replyMessage}\nFile uploaded to Google Drive: ${uploadedFile.id}`);
+            await uploadToDrive(googleDriveAPI, filePath, path.basename(filePath));
+            msgHandler(msg,`${userUid}'s ${file.file_path} uploaded to Google Drive`)
 
             // Clean up the local file
             fs.unlinkSync(filePath);
@@ -82,7 +82,6 @@ async function imageHandler(msg, userUid) {
         bot.sendMessage(msg.chat.id, 'Failed to save the image.');
     });
 
-    bot.sendMessage(msg.chat.id, replyMessage);
 }
 
 // Function to handle errors while uploading multiple images
@@ -103,17 +102,20 @@ bot.on('message', async (msg) => {
 
     // get userId of sender
     const userUid = getUserId(msg)
+    const authorizedUserUid = authorizeImageHandler(userUid)
 
     try {
         // Check if the message contains a photo
         if (msg.photo) {
-            await imageHandler(msg, userUid)
-        } else if (msg.text) {
-            // Respond if a text message is sent
-            msgHandler(msg, userUid)
+
+            if(authorizedUserUid===true){
+                await imageHandler(msg, userUid)
+            } else {
+                msgHandler(msg, `User ${userUid} not authorized to upload images to Google drive`)
+            }
+            
         } else {
-            // Handle other types of messages if necessary
-            bot.sendMessage(msg.chat.id, 'You sent a different type of message.');
+            msgHandler(msg, 'You sent a different type of message.')
         }
 
         // Wait for 2 seconds after each request
@@ -122,12 +124,8 @@ bot.on('message', async (msg) => {
         await handleError(err, msg);
     }
 
-    bot.sendMessage(msg.chat.id, 'Completed Upload ');
-
 });
 
-
-function msgHandler(msg, userUid) {
-    const replyMessage = "Telegram User : " + userUid + "\nMsg : " + msg.text.toString()
+function msgHandler(msg, replyMessage){
     bot.sendMessage(msg.chat.id, replyMessage);
 }
