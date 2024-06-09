@@ -11,6 +11,7 @@ const createBuffer = require('./modules/createBuffer')
 const getUserId = require('./modules/getUserId')
 const uploadToDrive = require('./modules/uploadToDrive')
 const authorizeImageHandler = require('./modules/authorizeImageHandler')
+const createDriveFolder = require('./modules/createDriveFolder')
 
 // Load environment variables
 const BOT_TOKEN = process.env.BOT_KEY;
@@ -18,6 +19,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const REDIRECT_URI = 'https://developers.google.com/oauthplayground'
+const GOOGLE_DRIVE_FOLDER_NAME = process.env.GOOGLE_DRIVE_FOLDER_NAME;
 
 // Initialize the bot
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
@@ -40,6 +42,11 @@ const googleDriveAPI = google.drive({
     version: 'v3',
     auth: oauth2Client,
 });
+
+// Created a Folder for drive upload
+const FOLDER_ID = createDriveFolder(googleDriveAPI,GOOGLE_DRIVE_FOLDER_NAME)
+console.log("Drive Folder Created ... ")
+
 
 // handle if image is sent
 async function imageHandler(msg, userUid) {
@@ -67,13 +74,13 @@ async function imageHandler(msg, userUid) {
     writer.on('finish', async () => {
         try {
             // Upload the file to Google Drive
-            await uploadToDrive(googleDriveAPI, filePath, path.basename(filePath));
+            await uploadToDrive(googleDriveAPI, filePath, path.basename(filePath), FOLDER_ID);
             msgHandler(msg,`${userUid}'s ${file.file_path} uploaded to Google Drive`)
 
             // Clean up the local file
             fs.unlinkSync(filePath);
         } catch (error) {
-            bot.sendMessage(msg.chat.id, 'Failed to upload the image to Google Drive.',error);
+            bot.sendMessage(msg.chat.id, `Failed to upload the image to Google Drive ${error}`);
         }
     });
 
