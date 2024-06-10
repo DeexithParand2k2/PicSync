@@ -1,6 +1,9 @@
 require('dotenv').config();
 const { google } = require('googleapis')
 
+// variable data
+var fileUploadStatus = require('./modules/state')
+
 // user defined modules
 const createBuffer = require('./modules/createBuffer')
 const getUserId = require('./modules/getUserId')
@@ -10,6 +13,7 @@ const imageHandler = require('./modules/imageHandler')
 const msgHandler = require('./modules/msgHandler')
 const handleMultipleRequestsError = require('./modules/handleMultipleRequestsError')
 const bot = require('./modules/bot')
+const printCurrentStatus = require('./modules/printCurrentStatus')
 
 // Load environment variables
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -41,13 +45,21 @@ const googleDriveAPI = google.drive({
 const googleDriveFolderId = createDriveFolder(googleDriveAPI,GOOGLE_DRIVE_FOLDER_NAME)
 console.log("Goolgle Drive Storage Folder Created ... ")
 
-// Setup Complete Here .......
+// API Setup Complete
+const chatInstance = ''
+
+function clearStatus(){
+    fileUploadStatus.queued = []
+    fileUploadStatus.completed = []
+    fileUploadStatus.failed = []
+}
 
 bot.on('message', async (msg) => {
 
     // get userId of sender
     const userUid = getUserId(msg)
     const authorizedUserUid = authorizeImageHandler(userUid)
+    const chatInstance = msg
 
     try {
         // Check if the message contains a photo
@@ -56,11 +68,19 @@ bot.on('message', async (msg) => {
             if(authorizedUserUid===true){
                 await imageHandler(msg, userUid, googleDriveFolderId, googleDriveAPI)
             } else {
-                msgHandler(msg, `User ${userUid} not authorized to upload images to Google drive`)
+                await msgHandler(msg, `User ${userUid} not authorized to upload images to Google drive`)
             }
             
-        } else {
-            msgHandler(msg, `${userUid} sent a different type of message.`)
+        } else if(msg.text === '/h'){
+            await msgHandler(msg, `PicSync Bot Commands include : \n/h : help\n/s : current status of file uploads\n/c : clear file uploads status`)
+        } else if(msg.text === '/s'){
+            const statusMessage = printCurrentStatus();
+            await msgHandler(msg, statusMessage)
+        } else if(msg.text === '/c'){
+            clearStatus()
+            await msgHandler(msg,  `cleared file status`)
+        }else {
+            await msgHandler(msg, `${userUid} sent a different type of message.`)
         }
 
     } catch (err) {
@@ -69,3 +89,13 @@ bot.on('message', async (msg) => {
 
 });
 
+
+const handleShutdown = async (signal) => {
+    console.log(`Received signal ${signal}. Shutting down the server`)
+    if(chatInstance!==''){
+       await msgHandler(chatInstance, "Bot Pic Sync will be down for sometime, Meet you soon.")
+    }
+}
+
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
