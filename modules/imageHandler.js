@@ -8,18 +8,21 @@ const handleMultipleRequestsError = require('./handleMultipleRequestsError')
 
 var fileUploadStatus = require('./state')
 
-function callWhenQueueIsEmpty(){
-    console.log('before status : ',fileUploadStatus)
+function callWhenQueueIsComplete(){
+
     // if queue is empty and completedFromQueue is not empty
-    if (fileUploadStatus.queued.length === 0 && fileUploadStatus.completedFromQueue.length > 0) {
+    if (fileUploadStatus.queued.length === fileUploadStatus.completedFromQueue.length) {
 
         fileUploadStatus.completedFromQueue.forEach((e) => {
             fileUploadStatus.completed.push(e)
         })
 
+        fileUploadStatus.lastUploadedCount = fileUploadStatus.completedFromQueue.length
+        
         fileUploadStatus.completedFromQueue = []
+        fileUploadStatus.queued = []
     }
-    console.log('after status : ',fileUploadStatus)
+    
 }
 
 // handle if image is sent
@@ -51,34 +54,32 @@ async function imageHandler(msg, userUid, googleDriveFolderId, googleDriveAPI) {
         const writer = fs.createWriteStream(filePath);
         response.data.pipe(writer);
 
-        writer.on('finish', async () => {
-            try {
+        try {
+
+            writer.on('finish', async () => {
                 // Upload the file to Google Drive
                 await uploadToDrive(googleDriveAPI, filePath, path.basename(filePath), googleDriveFolderId);
                 
                 fileUploadStatus.completedFromQueue.push(file.file_path)
-                
-                // remove from queue
-                fileUploadStatus.queued.shift()
 
-                callWhenQueueIsEmpty() // empty queue, fill completed
-                
-                // msgHandler(msg, `${userUid}'s ${file.file_path} uploaded to Google Drive`)
+                callWhenQueueIsComplete() // empty queue, fill completed
 
                 // Clean up the local file
                 fs.unlinkSync(filePath);
-            } catch (error) {
-                fileUploadStatus.failed.push(file.file_path)
-                bot.sendMessage(msg.chat.id, `Failed to upload the image to Google Drive ${error}`);
-            }
-        });
+            });
 
-        writer.on('error', (error) => {
-            console.error('Error saving the file:', error);
-            fileUploadStatus.failed.push(file.file_path)
-            bot.sendMessage(msg.chat.id, 'Failed to save the image.');
-        });
+            writer.on('error', (error) => {
+                console.error('Error saving the file:', error);
+                fileUploadStatus.failed.push(file.file_path)
+            });
+
+        } catch(err){
+            console.log('Handle Writer Error Seperately')
+        }
+
+
     } catch(err){
+        bot.sendMessage(msg.chat.id, `Multi error`);
         await handleMultipleRequestsError(err, msg);
     }
     

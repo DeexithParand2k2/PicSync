@@ -52,6 +52,7 @@ function clearStatus(){
     fileUploadStatus.queued = []
     fileUploadStatus.completed = []
     fileUploadStatus.failed = []
+    fileUploadStatus.lastUploadedCount = 0
 }
 
 bot.on('message', async (msg) => {
@@ -68,7 +69,7 @@ bot.on('message', async (msg) => {
             if(authorizedUserUid===true){
                 await imageHandler(msg, userUid, googleDriveFolderId, googleDriveAPI)
             } else {
-                await msgHandler(msg, `User ${userUid} not authorized to upload images to Google drive`)
+                await msgHandler(msg, `User ${userUid} not authorized to upload images to Google drive`,false)
             }
             
         } else if(msg.text === '/h'){
@@ -80,7 +81,11 @@ bot.on('message', async (msg) => {
             clearStatus()
             await msgHandler(msg,  `cleared file status`)
         } else {
-            await msgHandler(msg, `${userUid} sent a different type of message.`)
+            if(msg.text){
+                await msgHandler(msg, `${userUid} says ${msg.text}`)
+            } else {
+                await msgHandler(msg, `${userUid} sent a different type of message.`)
+            }   
         }
 
     } catch (err) {
@@ -93,7 +98,7 @@ bot.on('message', async (msg) => {
 const handleShutdown = async (signal) => {
     console.log(`Received signal ${signal}. Shutting down the server`)
     if(chatInstance!==''){
-       await msgHandler(chatInstance, "Bot Pic Sync will be down for sometime, Meet you soon.")
+       await msgHandler(chatInstance, "Bot Pic Sync will be down for sometime, Meet you soon.", false)
     }
 }
 

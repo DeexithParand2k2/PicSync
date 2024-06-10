@@ -3,7 +3,7 @@ var fileUploadStatus = {
     completedFromQueue : [],  // when success push to queue
     completed : [], // if queue is empty -> empty completed from queue and update in completed, check if failed = completed and remove fails
     failed : [], // pushed failed ones here
-    lastUploaded : '', // in development
+    lastUploadedCount : 0, // in development
     botPausedQueue : [] // in development
 }
 
