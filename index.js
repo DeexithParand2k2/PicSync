@@ -46,7 +46,7 @@ const googleDriveFolderId = createDriveFolder(googleDriveAPI,GOOGLE_DRIVE_FOLDER
 console.log("Goolgle Drive Storage Folder Created ... ")
 
 // API Setup Complete
-const chatInstance = ''
+var chatInstance = ''
 
 function clearStatus(){
     fileUploadStatus.queued = []
@@ -59,7 +59,7 @@ bot.on('message', async (msg) => {
     // get userId of sender
     const userUid = getUserId(msg)
     const authorizedUserUid = authorizeImageHandler(userUid)
-    const chatInstance = msg
+    chatInstance = msg
 
     try {
         // Check if the message contains a photo
@@ -75,11 +75,11 @@ bot.on('message', async (msg) => {
             await msgHandler(msg, `PicSync Bot Commands include : \n/h : help\n/s : current status of file uploads\n/c : clear file uploads status`)
         } else if(msg.text === '/s'){
             const statusMessage = printCurrentStatus();
-            await msgHandler(msg, statusMessage)
+            await msgHandler(msg, statusMessage, true)
         } else if(msg.text === '/c'){
             clearStatus()
             await msgHandler(msg,  `cleared file status`)
-        }else {
+        } else {
             await msgHandler(msg, `${userUid} sent a different type of message.`)
         }
 

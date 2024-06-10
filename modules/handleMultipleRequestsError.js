@@ -2,6 +2,7 @@ const bot = require('./bot')
 
 // Function to handle errors while uploading multiple images
 async function handleMultipleRequestsError(err, msg) {
+    console.log('$$$$$$$$$$$$$$$$$$$$$$$$$$$ CAUGHT HERE ####################################')
     if (err.response && err.response.statusCode === 429) {
         const retryAfter = err.response.headers['retry-after'] || 5;
         console.log(`Too Many Requests: Retrying after ${retryAfter} seconds`);
